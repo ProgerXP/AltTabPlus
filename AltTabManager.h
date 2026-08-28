@@ -1,12 +1,28 @@
 #include "stdafx.h"
 #include "Utils.h"
 #include <functional>
+#include <map>
 
 struct AltTabItem
 {
     HWND hwnd = nullptr;
     std::wstring title;
     HICON icon = nullptr;
+};
+
+enum class IsAltTabCandidateResult
+{
+    Success = 0,
+    NotWindowOrNotVisible,
+    SkipMinimized,
+    SkipChild,
+    SkipTool,
+    SkipCloaked,
+    SkipOwned,
+    SkipEmptyTitle,
+    SkipFailedGetWindowRect,
+    SkipEmptyRect,
+    SkipNotInRect
 };
 
 enum class CloseReason
@@ -85,6 +101,8 @@ private:
     static constexpr const wchar_t* MAIN_CLASS_NAME = L"AltTabPlusMainWindowClass";
     static constexpr const wchar_t* SWITCHER_CLASS_NAME = L"AltTabPlusSwitcherWindowClass";
     static constexpr const wchar_t* INI_HEADER = L"; https://github.com/ProgerXP/AltTabPlus";
+
+    std::map<HWND, IsAltTabCandidateResult> m_mapEnumFailures;
 
     HINSTANCE m_hInstance = nullptr;
     HWND m_hwndMain = nullptr;
@@ -199,7 +217,7 @@ private:
     bool InstallHooks();
     void Cleanup();
     void FreeItemIcons();
-    bool IsAltTabCandidate(HWND hwnd, LPCRECT pRect) const;
+    IsAltTabCandidateResult IsAltTabCandidate(HWND hwnd, const RECT& rectMonitor) const;
     BOOL OnEnumWindow(HWND hwnd);
     void BuildWindowList(const bool reload);
     SIZE CalculateSwitcherSize() const;

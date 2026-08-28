@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "AltTabManager.h"
 #include "resource.h"
+#include <sstream>
 #include <uxtheme.h>
 #pragma comment(lib, "uxtheme.lib")
 
@@ -590,44 +591,44 @@ void CAltTabManager::FreeItemIcons()
     }
 }
 
-bool CAltTabManager::IsAltTabCandidate(HWND hwnd, LPCRECT pRect) const
+IsAltTabCandidateResult CAltTabManager::IsAltTabCandidate(HWND hwnd, const RECT& rectMonitor) const
 {
     if (!IsWindow(hwnd) || !IsWindowVisible(hwnd))
-        return false;
+        return IsAltTabCandidateResult::NotWindowOrNotVisible;
     RECT rectRestored = {};
     const bool isMinimized = Utils::IsReallyMinimized(hwnd, &rectRestored);
     if (m_ignoreMinimized && isMinimized)
-        return false;
+        return IsAltTabCandidateResult::SkipMinimized;
 
     LONG style = GetWindowLongW(hwnd, GWL_STYLE);
     LONG exStyle = GetWindowLongW(hwnd, GWL_EXSTYLE);
     if (style & WS_CHILD)
-        return false;
+        return IsAltTabCandidateResult::SkipChild;
     if (exStyle & WS_EX_TOOLWINDOW)
-        return false;
+        return IsAltTabCandidateResult::SkipTool;
     if (Utils::IsWindowCloaked(hwnd))
-        return false;
+        return IsAltTabCandidateResult::SkipCloaked;
 
     HWND owner = GetWindow(hwnd, GW_OWNER);
     RECT rcOwner = {};
     if (owner)
         GetWindowRect(owner, &rcOwner);
     if (owner != nullptr && !(exStyle & WS_EX_APPWINDOW) && !IsRectEmpty(&rcOwner))
-        return false;
+        return IsAltTabCandidateResult::SkipOwned;
 
     std::wstring title = Utils::GetWindowText(hwnd);
     if (title.empty())
-        return false;
+        return IsAltTabCandidateResult::SkipEmptyTitle;
 
     RECT rc{};
     if (!GetWindowRect(hwnd, &rc))
-        return false;
+        return IsAltTabCandidateResult::SkipFailedGetWindowRect;
     if (IsRectEmpty(&rc))
-        return false;
-    if (!pRect || IsRectEmpty(pRect))
-        return true;
+        return IsAltTabCandidateResult::SkipEmptyRect;
 
-    return Utils::PtInRect(*pRect, rc) || (!m_ignoreMinimized && Utils::PtInRect(*pRect, rectRestored));
+    return (Utils::PtInRect(rectMonitor, rc) || (!m_ignoreMinimized && Utils::PtInRect(rectMonitor, rectRestored)))
+        ? IsAltTabCandidateResult::Success
+        : IsAltTabCandidateResult::SkipNotInRect;
 }
 
 BOOL CAltTabManager::OnEnumWindow(HWND hwnd)
@@ -636,8 +637,11 @@ BOOL CAltTabManager::OnEnumWindow(HWND hwnd)
     if (rep != hwnd)
         return TRUE;
 
-    if (IsAltTabCandidate(hwnd, &m_rectMonitorForWindowsEnumeration))
+    const auto reason = IsAltTabCandidate(hwnd, m_rectMonitorForWindowsEnumeration);
+    if (reason == IsAltTabCandidateResult::Success)
         m_mru.push_back(hwnd);
+    else
+        m_mapEnumFailures[hwnd] = reason;
 
     return TRUE;
 }
@@ -649,6 +653,14 @@ void CAltTabManager::BuildWindowList(const bool reload)
         m_mru.clear();
         EnumWindows(EnumWindowsFunc, reinterpret_cast<LPARAM>(this));
         FreeItemIcons();
+
+        std::wstringstream ss;
+        ss << INI_UI_SECTION << "> EnumWindows result:" << std::endl;
+        for (auto f : m_mapEnumFailures)
+            ss << std::hex << (LONG_PTR)f.first << "> " << std::dec << (int)f.second << std::endl;
+        ss << INI_UI_SECTION << "> EnumWindows result finished" << std::endl;
+        OutputDebugString(ss.str().c_str());
+        m_mapEnumFailures.clear();
     }
     m_items.clear();
 
