@@ -5,12 +5,10 @@ namespace Utils
 
 std::wstring GetWindowText(HWND hwnd)
 {
-    int len = GetWindowTextLengthW(hwnd);
-    if (len <= 0)
-        return L"";
-
+    const int len = max(GetWindowTextLengthW(hwnd), MAX_PATH);
     std::wstring s(static_cast<size_t>(len) + 1, L'\0');
-    GetWindowTextW(hwnd, &s[0], len + 1);
+    if (GetWindowTextW(hwnd, &s[0], len + 1) == 0)
+        return L"";
     s.resize(static_cast<size_t>(len));
     return s;
 }
