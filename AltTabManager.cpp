@@ -616,10 +616,6 @@ IsAltTabCandidateResult CAltTabManager::IsAltTabCandidate(HWND hwnd, const RECT&
     if (owner != nullptr && !(exStyle & WS_EX_APPWINDOW) && !IsRectEmpty(&rcOwner))
         return IsAltTabCandidateResult::SkipOwned;
 
-    std::wstring title = Utils::GetWindowText(hwnd);
-    if (title.empty())
-        return IsAltTabCandidateResult::SkipEmptyTitle;
-
     RECT rc{};
     if (!GetWindowRect(hwnd, &rc))
         return IsAltTabCandidateResult::SkipFailedGetWindowRect;
@@ -1054,9 +1050,16 @@ void CAltTabManager::PaintSwitcher(HWND hwnd)
             client.bottom - m_bottomPadding
         };
 
+        std::wstring title = m_items[m_selectedIndex].title;
+        if (title.empty())
+        {
+            title = Utils::GetWindowText(m_items[m_selectedIndex].hwnd);
+            m_items[m_selectedIndex].title = title;
+        }
+
         DrawTextW(
             hdc,
-            m_items[m_selectedIndex].title.c_str(),
+            title.c_str(),
             -1,
             &selectedTextRc,
             DT_CENTER | DT_TOP | DT_WORDBREAK | DT_END_ELLIPSIS

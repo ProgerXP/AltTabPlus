@@ -7,9 +7,7 @@ std::wstring GetWindowText(HWND hwnd)
 {
     const int len = max(GetWindowTextLengthW(hwnd), MAX_PATH);
     std::wstring s(static_cast<size_t>(len) + 1, L'\0');
-    if (GetWindowTextW(hwnd, &s[0], len + 1) == 0)
-        return L"";
-    s.resize(static_cast<size_t>(len));
+    s.resize(static_cast<size_t>(GetWindowTextW(hwnd, &s[0], len + 1)));
     return s;
 }
 

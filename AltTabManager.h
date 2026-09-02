@@ -19,7 +19,6 @@ enum class IsAltTabCandidateResult
     SkipTool,
     SkipCloaked,
     SkipOwned,
-    SkipEmptyTitle,
     SkipFailedGetWindowRect,
     SkipEmptyRect,
     SkipNotInRect
