@@ -613,7 +613,7 @@ IsAltTabCandidateResult CAltTabManager::IsAltTabCandidate(HWND hwnd, const RECT&
     RECT rcOwner = {};
     if (owner)
         GetWindowRect(owner, &rcOwner);
-    if (owner != nullptr && !(exStyle & WS_EX_APPWINDOW) && !IsRectEmpty(&rcOwner))
+    if (owner != nullptr && IsWindowVisible(owner) && !(exStyle & WS_EX_APPWINDOW) && !IsRectEmpty(&rcOwner))
         return IsAltTabCandidateResult::SkipOwned;
 
     RECT rc{};
@@ -629,7 +629,7 @@ IsAltTabCandidateResult CAltTabManager::IsAltTabCandidate(HWND hwnd, const RECT&
 
 BOOL CAltTabManager::OnEnumWindow(HWND hwnd)
 {
-    HWND rep = Utils::GetAltTabRepresentative(hwnd);
+    const HWND rep = Utils::GetAltTabRepresentative(hwnd);
     if (rep != hwnd)
         return TRUE;
 

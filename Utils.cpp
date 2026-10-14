@@ -20,7 +20,8 @@ bool IsWindowCloaked(HWND hwnd)
 
 HWND GetAltTabRepresentative(HWND hwnd)
 {
-    return GetAncestor(hwnd, GA_ROOTOWNER);
+    const HWND rep = GetAncestor(hwnd, GA_ROOTOWNER);
+    return (rep && IsWindowVisible(rep)) ? rep : hwnd;
 }
 
 HICON GetSmallWindowIcon(HWND hwnd)
